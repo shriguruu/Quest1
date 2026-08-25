@@ -183,15 +183,37 @@ def probe(video_path: Path, url: str = "") -> MediaInfo:
         raise ProbeError("Video stream has 0/0 fps")
 
     # --- VFR detection ---
+    #
+    # ffprobe's own avg_frame_rate is not a reliable VFR signal: it is
+    # derived from the *container* duration, so a file whose audio track
+    # simply runs longer than its video track reports an avg_frame_rate
+    # well below r_frame_rate and looks variable when it isn't.  Compare
+    # against the video stream's own nb_frames / duration instead, and
+    # only fall back to avg_frame_rate when the stream doesn't report
+    # both.
     is_vfr = False
-    if avg_fps > 0:
-        diff = abs(float(fps) - float(avg_fps)) / float(fps)
+    v_nb_frames = v_stream.get("nb_frames")
+    v_duration = v_stream.get("duration")
+
+    if v_nb_frames is not None and v_duration is not None and float(v_duration) > 0:
+        measured_fps = Fraction(int(v_nb_frames)) / Fraction(v_duration)
+        vfr_source = "stream nb_frames/duration"
+    elif avg_fps > 0:
+        measured_fps = avg_fps
+        vfr_source = "avg_frame_rate"
+    else:
+        measured_fps = None
+        vfr_source = "unavailable"
+
+    if measured_fps is not None:
+        diff = abs(float(fps) - float(measured_fps)) / float(fps)
         if diff > 0.001:
             is_vfr = True
             logger.warning(
                 "VFR detected",
                 r_frame_rate=str(fps),
-                avg_frame_rate=str(avg_fps),
+                measured_frame_rate=str(measured_fps),
+                source=vfr_source,
                 diff=diff,
             )
 

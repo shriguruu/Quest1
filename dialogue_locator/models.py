@@ -70,6 +70,9 @@ class AlignmentResult(BaseModel):
     uncertainty_s: float
     vad_confirmed: bool
     per_word: list[Word]
+    # Why forced alignment was rejected, when it was. Surfaced on the
+    # result so a fallback is never silent.
+    warnings: list[str] = []
 
 
 class FrameRef(BaseModel):
@@ -95,8 +98,15 @@ class LocateResult(BaseModel):
     frame: FrameRef | None
     text: str | None
     confidence: float
+    # Which tier produced the winning match, for display and for auditing
+    # a result after the fact.
+    matched_tier: MatchTier | None = None
+    # How the onset was determined, and how much to trust it.
+    alignment: AlignmentResult | None = None
     modality: Literal["audio", "visual"] | None
     alternates: list[Candidate]
     warnings: list[str]
-    media: MediaInfo
-    timings_ms: dict[str, float]
+    # Optional because an ERROR result may be produced before (or because)
+    # probing succeeded -- a failed download has no MediaInfo to report.
+    media: MediaInfo | None = None
+    timings_ms: dict[str, float] = {}

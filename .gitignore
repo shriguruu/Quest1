@@ -1,0 +1,14 @@
+# Caches: downloaded video, extracted audio, transcripts, PTS indexes.
+# Hundreds of MB to several GB. Never commit.
+.cache/
+
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Local config overrides
+.env
