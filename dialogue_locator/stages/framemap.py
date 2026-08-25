@@ -1,0 +1,1 @@
+"""Frame mapping stage."""
