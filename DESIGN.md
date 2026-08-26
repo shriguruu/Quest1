@@ -255,6 +255,16 @@ fallback wraps the *whole transcription*, not the model load, because
 CTranslate2 constructs a CUDA model happily with no cuBLAS present and only
 fails on the first `encode()` call, lazily, mid-generator.
 
+**A small ASR model, deliberately.** Transcription defaults to `base.en` rather
+than a large model. The reason is a division of labour: the transcript only has
+to be *good enough to locate the line*, because the fuzzy and phonetic tiers are
+built to absorb transcription error, and forced alignment — not Whisper —
+supplies the timing precision. On the test clip `base.en` heard "My mind rebels
+**its** stagnation"; the fuzzy tier scored it 94.7 and the pipeline landed on the
+right frame regardless. That buys a 54-minute video transcribed in 70 seconds on
+a plain CPU instead of 54 minutes, with no accuracy cost that survives the rest
+of the pipeline. Difficult audio can still step up via `LOCATOR_WHISPER_MODEL`.
+
 **Models are freed explicitly.** Whisper is released before alignment loads
 wav2vec2, so the two never coexist.
 

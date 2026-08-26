@@ -5,7 +5,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LOCATOR_", env_file=".env")
 
     # --- ASR ---
-    whisper_model: str = "large-v3"
+    # base.en is the default because it is fast enough to be usable on CPU
+    # (~46x realtime) and accurate enough for this task: the matcher's fuzzy
+    # and phonetic tiers exist precisely to absorb small-model transcription
+    # error. Raise to small.en / medium.en / large-v3 for difficult audio --
+    # heavy accents, noise, overlapping speakers -- or use the multilingual
+    # names (base, small, large-v3) for non-English media.
+    whisper_model: str = "base.en"
     whisper_compute_type: str = "int8_float16"
     device: str = "cuda"
     # Used when CUDA initialisation fails and we fall back to CPU.

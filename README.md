@@ -61,7 +61,7 @@ Two models download automatically on first use and are then cached in
 
 | Model | Size | Used for |
 |---|---|---|
-| Whisper (`faster-whisper`) | 150MB – 3GB, depending on size | Transcription |
+| Whisper `base.en` (`faster-whisper`) | ~150MB | Transcription |
 | `WAV2VEC2_ASR_BASE_960H` | 360MB | Forced alignment |
 
 Verify the install:
@@ -73,33 +73,43 @@ uv run dialogue-locator --help
 
 ---
 
-## Choosing a Whisper model
+## Transcription model
 
-**This is the one setting that matters.** It is the difference between a
-70-second run and a 54-minute one.
+The default is **`base.en`**, chosen so the tool is usable on a plain CPU with
+no GPU setup. On a 54-minute video it transcribes in about **70 seconds**
+(~46x realtime) and found the target line as an exact match.
 
-The default is `large-v3`, which assumes a working CUDA GPU. If CUDA is
-unavailable the tool falls back to CPU automatically — correct, but *slow*, at
-roughly realtime. On CPU, use a smaller model:
+Small models mishear words, and that is expected rather than fatal — the
+matcher's fuzzy and phonetic tiers exist to absorb it. On the test clip
+`base.en` heard *"My mind rebels **its** stagnation"* and the fuzzy tier still
+scored it 94.7, landing on the right frame.
 
-```bash
+For difficult audio — heavy accents, background noise, overlapping speakers —
+step up a size:
+
+```powershell
 # Windows PowerShell
-$env:LOCATOR_WHISPER_MODEL = "base.en"
-
+$env:LOCATOR_WHISPER_MODEL = "small.en"
+```
+```bash
 # macOS / Linux
-export LOCATOR_WHISPER_MODEL=base.en
+export LOCATOR_WHISPER_MODEL=small.en
 ```
 
 Measured on a 54-minute video, CPU:
 
 | Model | Transcription time | Notes |
 |---|---|---|
-| `base.en` | **~70s** (46x realtime) | Found the target line exactly. Recommended on CPU |
-| `small.en` | ~4 min | More accurate on hard audio |
-| `large-v3` | ~54 min | Only sensible with a working GPU |
+| `base.en` | **~70s** (46x realtime) | Default. Found the target line exactly |
+| `small.en` | ~4 min | Better on hard audio |
+| `medium.en` | ~15 min | Rarely necessary |
 
-Use the multilingual names (`base`, `small`, `large-v3`) for non-English media;
-the `.en` variants are English-only but more accurate at these sizes.
+The `.en` models are English-only. For other languages use the multilingual
+names (`base`, `small`, `medium`) and set `LOCATOR_LANGUAGE`.
+
+Larger models are far more comfortable on a GPU. `LOCATOR_DEVICE` defaults to
+`cuda` and falls back to CPU automatically when no CUDA runtime is present, so
+either machine works without configuration.
 
 ---
 
@@ -160,7 +170,7 @@ All settings are overridable with a `LOCATOR_` prefix, or via a `.env` file.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `LOCATOR_WHISPER_MODEL` | `large-v3` | Whisper model size |
+| `LOCATOR_WHISPER_MODEL` | `base.en` | Whisper model size |
 | `LOCATOR_DEVICE` | `cuda` | `cuda` or `cpu` (falls back automatically) |
 | `LOCATOR_LANGUAGE` | `en` | ASR language |
 | `LOCATOR_CONFIDENT_THRESHOLD` | `85.0` | Score for `CONFIDENT` |
@@ -190,9 +200,8 @@ A second run against the same media is near-instant. Delete `.cache/` or pass
 
 ## Troubleshooting
 
-**`Library cublas64_12.dll is not found`** — CUDA runtime missing. Harmless: the
-tool logs a warning and continues on CPU. Set `LOCATOR_WHISPER_MODEL=base.en` so
-it isn't slow.
+**`Library cublas64_12.dll is not found`** — CUDA runtime missing. Harmless:
+the tool logs a warning and continues on CPU, which is the default path anyway.
 
 **`This video is not available` on a YouTube video that plainly is** — YouTube
 gates its default player client behind bot detection that rejects many IPs, and
@@ -209,8 +218,8 @@ Download the video in a browser and use `--file` instead; the error message says
 so and repeats the command for you.
 
 **`NOT_FOUND` on a line you know is there** — read the near-misses it printed,
-then run `transcribe` to see what the ASR actually heard. A larger model often
-fixes it.
+then run `transcribe` to see what the ASR actually heard. If the wording is badly
+mangled, `LOCATOR_WHISPER_MODEL=small.en` usually fixes it.
 
 **Alignment fell back to `+/-300ms`** — the reason is printed. It means one of
 the three trust checks failed; the answer is still usable, just less precise.

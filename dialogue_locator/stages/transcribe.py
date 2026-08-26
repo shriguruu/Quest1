@@ -101,10 +101,10 @@ def _load_model(model_name: str, device: str, compute_type: str):
 def _release(model) -> None:
     """Free the model's memory before returning.
 
-    Later stages load their own models.  On an 8GB card, leaving a
-    large-v3 resident is the difference between the next stage running and
-    the next stage OOMing, so the handle is dropped explicitly rather than
-    left to the garbage collector's discretion.
+    Later stages load their own models.  On a small card, leaving a large
+    Whisper model resident is the difference between the next stage running
+    and the next stage OOMing, so the handle is dropped explicitly rather
+    than left to the garbage collector's discretion.
     """
     del model
     gc.collect()

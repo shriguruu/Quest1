@@ -59,12 +59,56 @@ def _try_impersonate() -> ImpersonateTarget | None:
         return None
 
 
+def _url_index_path(cache_dir: Path, url: str) -> Path:
+    """Where the URL -> downloaded-file pointer for *url* lives."""
+    url_key = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    return cache_dir / f"{url_key}.source.json"
+
+
+def _read_url_index(cache_dir: Path, url: str) -> Path | None:
+    """Return the cached file for *url*, if the pointer and file both exist."""
+    index_path = _url_index_path(cache_dir, url)
+    if not index_path.is_file():
+        return None
+    try:
+        record = json.loads(index_path.read_text(encoding="utf-8"))
+        cached = Path(record["path"])
+    except (json.JSONDecodeError, OSError, KeyError, TypeError):
+        logger.warning("Discarding unreadable cache pointer", path=str(index_path))
+        return None
+    return cached if cached.is_file() else None
+
+
+def _write_url_index(cache_dir: Path, url: str, format_id: str, path: Path) -> None:
+    """Record where *url* was downloaded to, keyed by URL alone."""
+    try:
+        _url_index_path(cache_dir, url).write_text(
+            json.dumps(
+                {"url": url, "format_id": format_id, "path": str(path)}, indent=2
+            ),
+            encoding="utf-8",
+        )
+    except OSError as e:
+        logger.warning("Could not write cache pointer", error=str(e))
+
+
 def acquire(url: str, cache_dir: Path, force: bool = False) -> Path:
     """Download a video via yt-dlp.  Returns path to the downloaded file.
 
     Raises AcquisitionError on failure, with a hint to use --file.
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # The primary cache key includes format_id, which can only be learned by
+    # asking the site -- so a naive cache check still needs the network, and
+    # an already-downloaded video becomes unusable the moment the site is
+    # unreachable.  A pointer keyed by URL alone removes that dependency:
+    # once a video is on disk, later runs never touch the network at all.
+    if not force:
+        cached = _read_url_index(cache_dir, url)
+        if cached is not None:
+            logger.info("Cache hit (no network needed)", path=str(cached))
+            return cached
 
     impersonate = _try_impersonate()
 
@@ -75,7 +119,7 @@ def acquire(url: str, cache_dir: Path, force: bool = False) -> Path:
         "writesubtitles": True,
         "writeautomaticsub": True,
         "subtitlesformat": "srt",
-        "socket_timeout": 30,
+        "socket_timeout": 60,
         "retries": 3,
         "extractor_retries": 3,
         "extractor_args": {
@@ -119,6 +163,7 @@ def acquire(url: str, cache_dir: Path, force: bool = False) -> Path:
             if video_files and not force:
                 out_path = video_files[0]
                 logger.info("Cache hit", path=str(out_path))
+                _write_url_index(cache_dir, url, format_id, out_path)
                 return out_path
 
             logger.info("Downloading media")
@@ -135,6 +180,8 @@ def acquire(url: str, cache_dir: Path, force: bool = False) -> Path:
             else:
                 final_path = Path(dl_ydl.prepare_filename(dl_info))
 
+            _write_url_index(cache_dir, url, format_id, final_path)
+
             subs = list(cache_dir.glob(f"{cache_key}*.srt"))
             if not subs:
                 logger.info("No subtitles found for this media")
@@ -144,10 +191,26 @@ def acquire(url: str, cache_dir: Path, force: bool = False) -> Path:
             return final_path
 
     except yt_dlp.utils.DownloadError as e:
+        stale = _read_url_index(cache_dir, url)
+        if stale is not None:
+            logger.warning(
+                "Site unreachable; using the previously downloaded copy",
+                path=str(stale),
+                error=str(e).splitlines()[0][:160],
+            )
+            return stale
         raise AcquisitionError(f"yt-dlp failed: {e}{_HINT}") from e
     except Exception as e:
         if isinstance(e, AcquisitionError):
             raise
+        stale = _read_url_index(cache_dir, url)
+        if stale is not None:
+            logger.warning(
+                "Acquisition failed; using the previously downloaded copy",
+                path=str(stale),
+                error=str(e)[:160],
+            )
+            return stale
         raise AcquisitionError(f"Acquisition failed: {e}{_HINT}") from e
 
 
