@@ -1,87 +1,18 @@
 {
-  "status": "CONFIDENT",
-  "timestamp": "00:05:25.264",
-  "frame": {
-    "frame_index": 7798,
-    "pts_s": 325.264167,
-    "image_path": "output\\frame_7798.png"
-  },
-  "text": "My mind rebels at stagnation.",
-  "confidence": 100.0,
-  "matched_tier": "EXACT",
-  "alignment": {
-    "onset_s": 325.28805,
-    "offset_s": 327.73415,
-    "method": "forced",
-    "uncertainty_s": 0.02,
-    "vad_confirmed": true,
-    "per_word": [
-      {
-        "text": "My",
-        "start_s": 325.28805,
-        "end_s": 325.40835,
-        "probability": 0.9991053342819214,
-        "segment_id": 35
-      },
-      {
-        "text": "mind",
-        "start_s": 325.48855,
-        "end_s": 325.68905,
-        "probability": 0.9993596822023392,
-        "segment_id": 35
-      },
-      {
-        "text": "rebels",
-        "start_s": 325.80935,
-        "end_s": 326.5111,
-        "probability": 0.9089939052408392,
-        "segment_id": 35
-      },
-      {
-        "text": "at",
-        "start_s": 326.6314,
-        "end_s": 326.6715,
-        "probability": 0.5922477543354034,
-        "segment_id": 35
-      },
-      {
-        "text": "stagnation.",
-        "start_s": 326.872,
-        "end_s": 327.73415,
-        "probability": 0.980138052593578,
-        "segment_id": 35
-      }
-    ],
-    "warnings": []
-  },
-  "modality": "audio",
+  "status": "ERROR",
+  "timestamp": null,
+  "frame": null,
+  "text": null,
+  "confidence": 0.0,
+  "matched_tier": null,
+  "alignment": null,
+  "modality": null,
   "alternates": [],
   "warnings": [
-    "Frame timing is not uniform; frame numbers come from measured presentation timestamps, not the nominal frame rate."
+    "AcquisitionError: yt-dlp failed: \u001b[0;31mERROR:\u001b[0m [youtube] QUTYxwTsbiM: This video is not available\n\nHint: If the site blocks automated downloads, you can download the video manually (e.g. with a browser or VPN) and pass it with:\n  dialogue-locator locate --file /path/to/video.mp4 --query \"...\""
   ],
-  "media": {
-    "url": "https://ok.ru/video/248244667877",
-    "video_path": ".cache\\e79c3b04a193cc30bdfae582ae3b1823e3f0e2246a935f26321f501b1c3ce7ce.mp4",
-    "audio_path": null,
-    "duration_s": 3261.781333,
-    "fps": "24000/1001",
-    "is_vfr": true,
-    "total_frames": 77984,
-    "width": 960,
-    "height": 720,
-    "video_start_time_s": 0.0,
-    "audio_start_time_s": 0.0,
-    "av_offset_s": 0.0,
-    "video_sha256": "cdd49a4cf41e763eb868be17b0c554d01e158936f38a1dbdf00c97604beb8360"
-  },
+  "media": null,
   "timings_ms": {
-    "acquire": 14033.67,
-    "probe": 62.99,
-    "pts_index": 17.78,
-    "transcribe": 116.38,
-    "match": 8.12,
-    "align": 2565.98,
-    "frame_map": 0.05,
-    "extract_frame": 176.56
+    "acquire": 1679.59
   }
 }

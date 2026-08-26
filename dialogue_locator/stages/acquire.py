@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from fractions import Fraction
@@ -17,8 +18,19 @@ logger = structlog.get_logger()
 _HINT = (
     "\n\nHint: If the site blocks automated downloads, you can download the "
     "video manually (e.g. with a browser or VPN) and pass it with:\n"
-    "  dialogue-locator locate --file /path/to/video.mp4 --query \"...\""
+    "  dialogue-locator locate --file /path/to/video.mp4 --query \"...\"\n"
+    "For YouTube specifically, passing your browser's cookies often helps:\n"
+    "  set LOCATOR_COOKIES_FROM_BROWSER=chrome"
 )
+
+# YouTube gates its default ("web") player client behind bot detection that
+# routinely rejects datacentre and some residential IPs, reporting the
+# thoroughly misleading "This video is not available" for videos that are
+# public and fine.  The mobile and embedded clients use a different endpoint
+# that is not gated the same way, so we hand yt-dlp an ordered list and let
+# it fall through until one answers.  This is YouTube-specific and ignored
+# by every other extractor.
+_YOUTUBE_PLAYER_CLIENTS = ["default", "android", "ios", "tv_embedded", "web_safari"]
 
 
 def _compute_sha256(path: Path) -> str:
@@ -66,11 +78,22 @@ def acquire(url: str, cache_dir: Path, force: bool = False) -> Path:
         "socket_timeout": 30,
         "retries": 3,
         "extractor_retries": 3,
+        "extractor_args": {
+            "youtube": {"player_client": _YOUTUBE_PLAYER_CLIENTS}
+        },
     }
 
     if impersonate:
         ydl_opts["impersonate"] = impersonate
         logger.debug("Using curl_cffi impersonation", target="chrome")
+
+    # Some videos (age-gated, members-only, or simply an IP YouTube dislikes)
+    # need real browser cookies. Opt-in, since reading a browser profile is
+    # not something to do silently.
+    cookies_browser = os.environ.get("LOCATOR_COOKIES_FROM_BROWSER")
+    if cookies_browser:
+        ydl_opts["cookiesfrombrowser"] = (cookies_browser,)
+        logger.info("Using browser cookies", browser=cookies_browser)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
