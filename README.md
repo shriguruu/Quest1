@@ -166,6 +166,7 @@ All settings are overridable with a `LOCATOR_` prefix, or via a `.env` file.
 | `LOCATOR_CONFIDENT_THRESHOLD` | `85.0` | Score for `CONFIDENT` |
 | `LOCATOR_UNCERTAIN_THRESHOLD` | `65.0` | Floor for a usable result |
 | `LOCATOR_ALIGN_WINDOW_S` | `3.0` | Padding around the candidate for alignment |
+| `LOCATOR_COOKIES_FROM_BROWSER` | unset | e.g. `chrome` — use browser cookies for gated videos |
 | `LOCATOR_CACHE_DIR` | `.cache` | Downloads, audio, transcripts, PTS indexes |
 | `LOCATOR_OUTPUT_DIR` | `output` | Frames and `result.json` |
 | `LOG_JSON` | unset | Set to `1` for JSON logs on stderr |
@@ -193,8 +194,19 @@ A second run against the same media is near-instant. Delete `.cache/` or pass
 tool logs a warning and continues on CPU. Set `LOCATOR_WHISPER_MODEL=base.en` so
 it isn't slow.
 
-**Download fails** — some sites block automated downloads. Download the video in
-a browser and use `--file` instead; the message says so and repeats the command.
+**`This video is not available` on a YouTube video that plainly is** — YouTube
+gates its default player client behind bot detection that rejects many IPs, and
+reports this misleading message for perfectly public videos. The tool already
+falls through to the `android`, `ios`, and `tv_embedded` clients automatically,
+which resolves it in most cases. If it still fails, supply browser cookies:
+
+```powershell
+$env:LOCATOR_COOKIES_FROM_BROWSER = "chrome"
+```
+
+**Download fails on another site** — some sites block automated downloads.
+Download the video in a browser and use `--file` instead; the error message says
+so and repeats the command for you.
 
 **`NOT_FOUND` on a line you know is there** — read the near-misses it printed,
 then run `transcribe` to see what the ASR actually heard. A larger model often
