@@ -41,9 +41,48 @@ sure, it says so and shows its alternatives rather than guessing.
 
 ## Setup
 
-**Requires** Python 3.11+, [uv](https://docs.astral.sh/uv/), and `ffmpeg` /
-`ffprobe` on your `PATH` (`winget install Gyan.FFmpeg` · `brew install ffmpeg` ·
-`apt install ffmpeg`).
+No GPU required — everything runs on CPU by default.
+
+### 1. Install ffmpeg
+
+The tool shells out to `ffmpeg` and `ffprobe` for decoding, audio extraction,
+and reading frame timestamps. Both must be on your `PATH`.
+
+| Platform | Command |
+|---|---|
+| Windows | `winget install Gyan.FFmpeg` |
+| macOS | `brew install ffmpeg` |
+| Debian / Ubuntu | `sudo apt install ffmpeg` |
+
+Verify before going further — this is the most common setup failure:
+
+```bash
+ffmpeg -version
+ffprobe -version
+```
+
+If Windows still reports "not recognised" after installing, open a **new**
+terminal so it picks up the updated `PATH`.
+
+### 2. Install uv
+
+[uv](https://docs.astral.sh/uv/) manages the virtualenv, the dependencies, and
+even the Python version.
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+You do **not** need to install Python yourself. The project requires 3.11+, and
+if your system doesn't have it, uv downloads a suitable interpreter during the
+next step.
+
+### 3. Clone and install
 
 ```bash
 git clone https://github.com/shriguruu/Quest1.git
@@ -51,14 +90,55 @@ cd Quest1
 uv sync
 ```
 
-That pulls ~400MB, including a **CPU-only** PyTorch build — `pyproject.toml`
-pins torch to PyTorch's CPU index so `uv sync` can't silently grab the 2–3GB
-CUDA wheel. Two models (~510MB total) download on first run and are cached
-afterwards.
+`uv sync` creates `.venv/`, resolves everything from `uv.lock` (so you get the
+exact versions this was tested against), and installs the package itself.
+
+It pulls roughly **400MB**, including a **CPU-only** PyTorch build.
+`pyproject.toml` deliberately pins torch to PyTorch's CPU index, so this can't
+silently grab the 2–3GB CUDA wheel you don't need.
+
+### 4. Verify
 
 ```bash
-uv run pytest -q      # 99 tests, no network needed
+uv run pytest -q                    # 99 tests, no network or media needed
+uv run dialogue-locator --help      # should list: locate, probe, transcribe
 ```
+
+All 99 tests passing means the frame arithmetic, matching, and alignment logic
+are sound on your machine.
+
+### 5. First run
+
+Two models download automatically the first time they're needed, then are
+cached in `~/.cache` and never fetched again:
+
+| Model | Size | Purpose |
+|---|---|---|
+| `faster-whisper-base.en` | 141MB | Transcription |
+| `WAV2VEC2_ASR_BASE_960H` | 378MB | Forced alignment |
+
+**Disk space:** budget ~1.5GB for the virtualenv and models, plus room in
+`.cache/` for downloaded videos and their extracted audio — a 54-minute video
+takes about 1.1GB. Both `.cache/` and `output/` are gitignored.
+
+<details>
+<summary>Setup problems</summary>
+
+<br>
+
+**`uv: command not found`** — restart your terminal after installing uv, or add
+`~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows) to `PATH`.
+
+**`ffprobe failed` or `No video stream found`** — ffmpeg isn't installed or
+isn't on `PATH`. Re-check step 1 in a fresh terminal.
+
+**`uv sync` fails resolving torch** — you're likely behind a proxy blocking
+`download.pytorch.org`, which the CPU-only pin depends on.
+
+**First run seems to hang** — it's downloading the 141MB and 378MB model files.
+Progress goes to stderr; subsequent runs skip this entirely.
+
+</details>
 
 ---
 
